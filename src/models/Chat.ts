@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-interface Conversation {
+interface Chat {
     [x: string]: any;
     name: string;
 }
@@ -12,4 +12,4 @@ const schema = new mongoose.Schema(
     { timestamps: true }
 );
 
-export default mongoose.model<Conversation>('Conversation', schema);
+export default mongoose.model<Chat>('Chat', schema);

@@ -6,6 +6,9 @@ import { Server } from "socket.io";
 import { connect } from "./config/database";
 import formatMessage from "./messages";
 import { errorHandler } from "./middleware/error";
+import Chat from "./models/Chat";
+import Member from "./models/Member";
+import Message from "./models/Message";
 import { current, getRoomUsers, join, userLeave } from "./users";
 
 config();
@@ -49,36 +52,151 @@ io.use((socket: any, next) => {
     }
 });
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
 
     const req: any = socket.request;
 
+    socket.join(req.user.id);
 
-    const users = [];
+    //fetching chats;
+    const chats: any = [];
 
-    for (let [id, socket] of io.of('/').sockets) {
-        const re: any = socket.request;
-        users.push({
-            userID: id,
-            username: re.user.firstname
-        })
-    }
+    const members = await Member.find({ user: req.user.id }).populate('chat');
 
-    socket.emit('users', users);
+    await Promise.all(members.map(async (member) => {
 
-    socket.broadcast.emit("user connected", {
-        userID: socket.id,
-        username: req.user.firstname
+        const members = await Member.find({ chat: member.chat }).populate('user');
+
+        await Promise.all(members.map(async (user) => {
+
+            if (user.user._id.toString() !== req.user.id) {
+                const lastMessage = await Message.findOne({ chat: user.chat }).sort({ createdAt: -1 });
+                //const messages = await Message.find({ chat: user.chat });
+
+                chats.push({
+                    id: member.chat._id,
+                    name: `${user.user.firstname} ${user.user.lastname}`,
+                    prefix: `${user.user.firstname[0]}${user.user.lastname[0]}`.toUpperCase(),
+                    message: lastMessage ? lastMessage.text : null,
+                    image: '',
+                    time: lastMessage ? lastMessage.createdAt : null,
+                    status: user.status,
+                    /* messages: messages.map((message) => {
+                        return {
+                            id: message._id,
+                            text: message.text,
+                            from: message.user,
+                            isSender: message.user.toString() === req.user.id,
+                            time: message.createdAt,
+                        }
+                    }) */
+                });
+            }
+        }));
+    }));
+
+    socket.broadcast.emit('user connected', req.user);
+
+    socket.emit('chats', chats);
+
+    socket.on('message', async ({ content, to }) => {
+        const message = {
+            content,
+            from: req.user.id,
+            to,
+        };
+
+        const recipients = await Member.find({ user: req.user.id }).populate('chat');
+
+        // Find if the conversation already exists
+        if (recipients.length) {
+
+            async function filter(arr: any[], callback: any) {
+                const fail = Symbol()
+                return (await Promise.all(arr.map(async item => (await callback(item)) ? item : fail))).filter(i => i !== fail)
+            }
+
+            const results = await filter(recipients, async (member: any) => {
+                const user = await Member.findOne({ user: message.to, chat: member.chat._id });
+                return user?.chat.toString() === member.chat._id.toString();
+            });
+
+            if (results.length) {
+                //console.log('Add message');
+                await Message.create({ text: message.content, user: message.from, chat: results[0].chat._id });
+            } else {
+                const chat = await Chat.create({ text: '' });
+
+                await Member.create({ user: message.from, chat: chat._id });
+
+                await Member.create({ user: message.to, chat: chat._id });
+
+                await Message.create({ text: message.content, user: message.from, chat: chat._id });
+            }
+
+        } else {
+            const chat = await Chat.create({ text: '' });
+
+            await Member.create({ user: message.from, chat: chat._id });
+
+            await Member.create({ user: message.to, chat: chat._id });
+
+            await Message.create({ text: message.content, user: message.from, chat: chat._id });
+        }
+
+        //fetching chats;
+        const chats: any = [];
+
+        const recip = await Member.find({ user: req.user.id }).populate('chat');
+
+        await Promise.all(recip.map(async (member) => {
+
+            const members = await Member.find({ chat: member.chat }).populate('user');
+    
+            await Promise.all(members.map(async (user) => {
+    
+                if (user.user._id.toString() !== req.user.id) {
+                    const lastMessage = await Message.findOne({ chat: user.chat }).sort({ createdAt: -1 });
+                    //const messages = await Message.find({ chat: user.chat });
+    
+                    chats.push({
+                        id: member.chat._id,
+                        name: `${user.user.firstname} ${user.user.lastname}`,
+                        prefix: `${user.user.firstname[0]}${user.user.lastname[0]}`.toUpperCase(),
+                        message: lastMessage ? lastMessage.text : null,
+                        image: '',
+                        time: lastMessage ? lastMessage.createdAt : null,
+                        status: user.status,
+                        /* messages: messages.map((message) => {
+                            return {
+                                id: message._id,
+                                text: message.text,
+                                from: message.user,
+                                isSender: message.user.toString() === req.user.id,
+                                time: message.createdAt,
+                            }
+                        }) */
+                    });
+                }
+            }));
+        }));
+
+        socket.to(to).to(req.user.id).emit("message", chats);
     });
 
-    socket.on('private message', ({content, to}) => {
-        socket.to(to).emit('private message', {
-            content,
-            from: req.user.id
-        })
-    })
-    
+    socket.on('disconnect', async () => {
+        const sockets = await io.in(req.user.id).allSockets();
 
+        const disconnected = sockets.size === 0;
+
+        if (disconnected) {
+
+            // notify other users
+            socket.broadcast.emit('user disconnected', req.user);
+
+            // update the connection status of the session
+        }
+    });
     /* socket.on('joinRoom', ({ room }) => {
 
         const user = join(req.user.id, req.user.firstname, room);

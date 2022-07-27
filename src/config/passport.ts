@@ -14,7 +14,7 @@ module.exports = (passport: any) => {
 
                     // Assing user to a new object
                     const data = {
-                        id: user._id,
+                        id: user._id.toString(),
                         firstname: user.firstname,
                         lastname: user.lastname,
                         email: user.email

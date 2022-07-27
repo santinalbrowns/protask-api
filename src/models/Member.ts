@@ -2,17 +2,24 @@ import mongoose from "mongoose";
 
 interface Member {
     [x: string]: any;
-    conversation: any;
+    chat: any;
     user: any;
+    status: STATUS;
     seen: any;
     deleted: boolean;
 }
 
+export enum STATUS {
+    ONLINE = 'online',
+    OFFLINE = 'offline',
+}
+
 const schema = new mongoose.Schema(
     {
-        conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true },
+        chat: { type: mongoose.Schema.Types.ObjectId, ref: 'Chat', required: true },
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        seen: { type: Date },
+        status: { type: String, enum: [STATUS.ONLINE, STATUS.OFFLINE], default: STATUS.OFFLINE },
+        seen: {type: Date},
         deleted: { type: Boolean, default: false },
     },
     { timestamps: true }
