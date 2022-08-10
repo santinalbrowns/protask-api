@@ -1,4 +1,5 @@
 import express from "express";
+import passport from "passport";
 import { createTask, deleteTask, getTask, getTasks, updatedTask } from "../controllers/tasks";
 import { protect } from "../middleware/auth";
 import validate from "../middleware/validator";
@@ -7,7 +8,7 @@ import { create, update } from "../schema/task";
 const router = express.Router();
 
 // Auth required
-router.use(protect);
+router.use(passport.authenticate('jwt', {session: false}));
 
 router.get('/', getTasks);
 

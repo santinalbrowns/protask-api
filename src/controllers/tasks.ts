@@ -2,34 +2,47 @@ import { NextFunction, Request, Response } from "express";
 import Project from "../models/Project";
 import Task from "../models/Task";
 import User from "../models/User";
+import { formatUser } from "./users";
 
-function formatTask(task: any) {
+export function formatTask(task: any) {
     return {
         id: task._id,
         name: task.name,
         due: task.due,
         completed: task.completed,
         project: task.project,
-        user: task.user
+        user: formatUser(task.user),
     }
 }
 
-export async function getTasks(request: Request, response: Response, next: NextFunction) {
+export async function getTasks(request: any, response: Response, next: NextFunction) {
     try {
-        const tasks = await Task.find({ user: response.locals.user._id });
+        if (request.query.filter === 'completed') {
 
+            const tasks = await Task.find({ user: request.user.id, completed: true }).populate('user');
+            const body = tasks.map((task) => formatTask(task));
+            return response.status(200).json(body);
+        }
+
+        if (request.query.filter === 'incomplete') {
+            const tasks = await Task.find({ user: request.user.id, completed: false }).populate('user');
+            const body = tasks.map((task) => formatTask(task));
+            return response.status(200).json(body);
+        }
+
+        const tasks = await Task.find({ user: request.user.id }).populate('user');
         const body = tasks.map((task) => formatTask(task));
 
-        response.status(200).json(body);
+        return response.status(200).json(body);
 
     } catch (error) {
         next(error);
     }
 }
 
-export async function getTask(request: Request, response: Response, next: NextFunction) {
+export async function getTask(request: any, response: Response, next: NextFunction) {
     try {
-        const task = await Task.findOne({ _id: request.params.id, user: response.locals.user._id });
+        const task = await Task.findOne({ _id: request.params.id, user: request.user.id }).populate('user');
 
         if (!task) {
             response.status(404);
@@ -44,10 +57,10 @@ export async function getTask(request: Request, response: Response, next: NextFu
     }
 }
 
-export async function createTask(request: Request, response: Response, next: NextFunction) {
+export async function createTask(request: any, response: Response, next: NextFunction) {
     try {
 
-        const project = await Project.findOne({ _id: request.body.project, user: response.locals.user._id });
+        const project = await Project.findOne({ _id: request.body.project, user: request.user.id });
 
         if (!project) {
             response.status(404);
@@ -77,10 +90,10 @@ export async function createTask(request: Request, response: Response, next: Nex
     }
 }
 
-export async function updatedTask(request: Request, response: Response, next: NextFunction) {
+export async function updatedTask(request: any, response: Response, next: NextFunction) {
     try {
 
-        const task = await Task.findOne({ _id: request.params.id, user: response.locals.user });
+        const task = await Task.findOne({ _id: request.params.id, user: request.user.id }).populate('user');
 
         if (!task) {
             response.status(404);
@@ -107,9 +120,9 @@ export async function updatedTask(request: Request, response: Response, next: Ne
     }
 }
 
-export async function deleteTask(request: Request, response: Response, next: NextFunction) {
+export async function deleteTask(request: any, response: Response, next: NextFunction) {
     try {
-        const task = await Task.findOne({ _id: request.params.id, user: response.locals.user });
+        const task = await Task.findOne({ _id: request.params.id, user: request.user.id });
 
         if (!task) {
             response.status(404);

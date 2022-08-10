@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { sign } from "../helpers/jwt";
 import User from "../models/User";
 
-function formatUser(user: any) {
+export function formatUser(user: any) {
     return {
         id: user._id,
         firstname: user.firstname,
@@ -13,7 +13,7 @@ function formatUser(user: any) {
     }
 }
 
-export async function getUsers(request: Request, response: Response, next: NextFunction) {
+export async function getUsers(request: Request | any, response: Response, next: NextFunction) {
     try {
         const users = await User.find();
 
@@ -21,7 +21,9 @@ export async function getUsers(request: Request, response: Response, next: NextF
             return formatUser(user);
         });
 
-        response.status(200).json(body);
+        const res = body.filter((user) => user.id != request.user.id);
+
+        response.status(200).json(res);
 
     } catch (error) {
         next(error);

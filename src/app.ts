@@ -71,7 +71,7 @@ io.on('connection', async (socket) => {
 
             if (user.user._id.toString() !== req.user.id) {
                 const lastMessage = await Message.findOne({ chat: user.chat }).sort({ createdAt: -1 });
-                //const messages = await Message.find({ chat: user.chat });
+                const messages = await Message.find({ chat: user.chat });
 
                 chats.push({
                     id: member.chat._id,
@@ -81,7 +81,7 @@ io.on('connection', async (socket) => {
                     image: '',
                     time: lastMessage ? lastMessage.createdAt : null,
                     status: user.status,
-                    /* messages: messages.map((message) => {
+                    messages: messages.map((message) => {
                         return {
                             id: message._id,
                             text: message.text,
@@ -89,7 +89,7 @@ io.on('connection', async (socket) => {
                             isSender: message.user.toString() === req.user.id,
                             time: message.createdAt,
                         }
-                    }) */
+                    })
                 });
             }
         }));
@@ -156,8 +156,9 @@ io.on('connection', async (socket) => {
             await Promise.all(members.map(async (user) => {
     
                 if (user.user._id.toString() !== req.user.id) {
+                    console.log(user);
                     const lastMessage = await Message.findOne({ chat: user.chat }).sort({ createdAt: -1 });
-                    //const messages = await Message.find({ chat: user.chat });
+                    const messages = await Message.find({ chat: user.chat });
     
                     chats.push({
                         id: member.chat._id,
@@ -167,7 +168,7 @@ io.on('connection', async (socket) => {
                         image: '',
                         time: lastMessage ? lastMessage.createdAt : null,
                         status: user.status,
-                        /* messages: messages.map((message) => {
+                        messages: messages.map((message) => {
                             return {
                                 id: message._id,
                                 text: message.text,
@@ -175,7 +176,7 @@ io.on('connection', async (socket) => {
                                 isSender: message.user.toString() === req.user.id,
                                 time: message.createdAt,
                             }
-                        }) */
+                        })
                     });
                 }
             }));
