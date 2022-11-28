@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import express from "express";
+import cors from "cors";
 import http from "http";
 import passport from "passport";
 import { Server } from "socket.io";
@@ -13,12 +14,23 @@ import { current, getRoomUsers, join, userLeave } from "./users";
 
 config();
 
+//5tjSrBfVvPWILfKAomnUjDP14ymtA1JdIcYxV2KngsJ  | api key for livekit
+
 connect();
 
 const app = express();
 
+app.use(cors())
+
 // Passport middleware
 app.use(passport.initialize());
+
+/* app.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,PUT,PATCH,POST,DELETE");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+}); */
 
 // Passport configuration
 require('./config/passport')(passport);
@@ -152,14 +164,14 @@ io.on('connection', async (socket) => {
         await Promise.all(recip.map(async (member) => {
 
             const members = await Member.find({ chat: member.chat }).populate('user');
-    
+
             await Promise.all(members.map(async (user) => {
-    
+
                 if (user.user._id.toString() !== req.user.id) {
                     console.log(user);
                     const lastMessage = await Message.findOne({ chat: user.chat }).sort({ createdAt: -1 });
                     const messages = await Message.find({ chat: user.chat });
-    
+
                     chats.push({
                         id: member.chat._id,
                         name: `${user.user.firstname} ${user.user.lastname}`,

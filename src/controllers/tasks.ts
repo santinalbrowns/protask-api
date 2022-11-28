@@ -76,12 +76,14 @@ export async function createTask(request: any, response: Response, next: NextFun
             throw new Error('User not found');
         }
 
-        const task = await Task.create({
+        const result = await Task.create({
             name: request.body.name,
             due: request.body.due,
             project: request.body.project,
             user: request.body.user,
         });
+
+        const task = await Task.findById(result._id).populate("user");
 
         response.status(201).json(formatTask(task));
 
