@@ -8,10 +8,10 @@ export const create = object({
 })
 
 export const update = object({
-    password: string().min(8).notRequired(),
+    password: string().notRequired(),
     email: string().email().notRequired().max(255),
-    lastname: string().notRequired().min(3).max(45),
-    firstname: string().notRequired().min(3).max(45)
+    lastname: string().notRequired().max(45),
+    firstname: string().notRequired().max(45)
 })
 
 export const login = object({
